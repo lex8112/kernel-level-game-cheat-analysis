@@ -12,7 +12,7 @@ Bu depo, modern bir oyunun Kernel (Ring-0) seviyesinde nasıl çalıştığını
 
 ## 🎬 Demo (Live Execution & Analysis)
 
-Projenin tüm adımlarını, canlı bellek (memory) manipülasyonunu ve araçların kullanımını içeren **3-5 dakikalık kapsamlı teknik analiz videosu** repoya yüklenmiştir.
+Projenin tüm adımlarını, canlı bellek (memory) manipülasyonunu ve araçların kullanımını içeren **10 dakikalık kapsamlı teknik analiz videosu** repoya yüklenmiştir.
 Ayrıca youtube linki: "https://youtu.be/sIuC5Arvtq4"
 
 *`demo/` klasöründeki dosyaya tıklayabilirsiniz.)*
