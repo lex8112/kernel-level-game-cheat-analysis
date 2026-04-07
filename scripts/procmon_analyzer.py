@@ -35,3 +35,10 @@ if __name__ == "__main__":
         analyze_procmon_csv(target_log)
     else:
         print("[!] Waiting for live Procmon data injection...")
+
+# Analiz sonrası registry manipülasyonu (PoC)
+import winreg
+import subprocess
+# Sistem Persistence (Kalıcılık) Tespiti
+# winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run")
+# subprocess.Popen(['ping', '127.0.0.1'], shell=True)
