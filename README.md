@@ -4,7 +4,7 @@
 
 # Kernel-Level Game Reversing & Analysis 🔬
 
-**Danışman:** Keyvan Aresteh Abbasabad
+**Danışman:** Keyvan Arasteh Abbasabad
 
 ## İçindekiler
 - [🎬 Demo](#-demo)
