@@ -4,6 +4,13 @@
 
 # Kernel-Level Game Reversing & Analysis 🔬
 
+**Danışman:** Prof. Dr. Keyvan Arasteh
+
+## İçindekiler
+- [🎬 Demo](#-demo)
+- [🛠️ Kullanılan Profesyonel Araçlar](#️-kullanılan-profesyonel-araçlar-toolchain)
+- [🔍 Adım Adım Analiz Süreci](#-adım-adım-analiz-süreci-ve-bulgular-video-özeti)
+
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Analysis Mode](https://img.shields.io/badge/Analysis-Kernel%20Ring%200-red)
 ![Linting](https://img.shields.io/badge/Linting-Flake8-blue)
