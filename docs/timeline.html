@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reverse Engineering Game Cheat — Investigation Timeline</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800;900&display=swap');
+
+  /* ═══════════════════════════════════════════
+     THEME VARIABLES
+     ═══════════════════════════════════════════ */
+  :root {
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --emerald: #10b981;
+    --cyan: #06b6d4;
+    --rose: #f43f5e;
+    --violet: #8b5cf6;
+  }
+
+  [data-theme="dark"] {
+    --bg: #0a0a0f;
+    --bg2: #0d0d14;
+    --surface: #12121a;
+    --surface2: #191924;
+    --border: #1e1e2e;
+    --border2: #2a2a3e;
+    --text: #e0e0e8;
+    --text2: #ffffff;
+    --muted: #6b6b80;
+    --accent: #6366f1;
+    --accent-glow: rgba(99,102,241,0.15);
+    --line-color: rgba(99,102,241,0.25);
+    --shadow: rgba(0,0,0,0.4);
+    --img-brightness: 0.88;
+    --code-bg: #0d0d14;
+  }
+
+  [data-theme="light"] {
+    --bg: #f5f5f7;
+    --bg2: #ffffff;
+    --surface: #ffffff;
+    --surface2: #f0f0f5;
+    --border: #e0e0e8;
+    --border2: #d0d0dc;
+    --text: #1a1a2e;
+    --text2: #0a0a0f;
+    --muted: #6b6b80;
+    --accent: #4f46e5;
+    --accent-glow: rgba(79,70,229,0.1);
+    --line-color: rgba(79,70,229,0.2);
+    --shadow: rgba(0,0,0,0.08);
+    --img-brightness: 1;
+    --code-bg: #f3f4f6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    transition: background 0.4s, color 0.4s;
+  }
+
+  /* ═══════ TOP-RIGHT CONTROLS ═══════ */
+  .top-controls {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .ctrl-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 4px 20px var(--shadow);
+  }
+  .ctrl-btn:hover {
+    border-color: var(--accent);
+    transform: scale(1.1);
+    box-shadow: 0 4px 30px var(--accent-glow);
+  }
+  .lang-btn {
+    font-size: 12px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  /* ═══════ HERO ═══════ */
+  .hero {
+    text-align: center;
+    padding: 80px 20px 50px;
+    position: relative;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .hero .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--red);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    animation: badgePulse 2s ease-in-out infinite;
+  }
+  @keyframes badgePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.2); }
+    50% { box-shadow: 0 0 20px 4px rgba(239,68,68,0.1); }
+  }
+  .hero h1 {
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--text2) 0%, var(--accent) 60%, var(--rose) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .hero .meta {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .hero .meta span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hero .meta span strong { color: var(--text); }
+
+  /* ═══════ STATS BAR ═══════ */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    max-width: 800px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .stat-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px var(--accent-glow);
+  }
+  .stat-card .number {
+    font-size: 22px;
+    font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stat-card .label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* ═══════ TIMELINE — LEFT-RAIL LAYOUT ═══════ */
+  .timeline {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+    position: relative;
+  }
+
+  /* Vertical Line — left rail */
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 39px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--accent), var(--rose), var(--emerald), var(--accent));
+    opacity: 0.3;
+  }
+
+  /* ── Phase Marker ── */
+  .phase {
+    position: relative;
+    padding-left: 72px;
+    margin: 48px 0 24px;
+  }
+  .phase .phase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 22px;
+    border-radius: 24px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border: 1px solid;
+  }
+  .phase.recon .phase-badge { background: rgba(6,182,212,0.08); border-color: rgba(6,182,212,0.25); color: var(--cyan); }
+  .phase.hunt .phase-badge { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); color: var(--amber); }
+  .phase.analyze .phase-badge { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.25); color: var(--violet); }
+  .phase.discover .phase-badge { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: var(--red); }
+  .phase.conclusion .phase-badge { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.25); color: var(--emerald); }
+
+  /* ── Timeline Entry ── */
+  .tl-entry {
+    position: relative;
+    padding-left: 72px;
+    margin-bottom: 28px;
+  }
+
+  /* Dot on the line */
+  .tl-entry::before {
+    content: '';
+    position: absolute;
+    left: 32px;
+    top: 20px;
+    width: 16px;
+    height: 16px;
+    background: var(--bg);
+    border: 3px solid var(--accent);
+    border-radius: 50%;
+    z-index: 2;
+    transition: all 0.3s;
+  }
+  .tl-entry:hover::before {
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+  .tl-entry.danger::before { border-color: var(--red); }
+  .tl-entry.danger:hover::before { background: var(--red); box-shadow: 0 0 12px var(--red); }
+  .tl-entry.warning::before { border-color: var(--amber); }
+  .tl-entry.warning:hover::before { background: var(--amber); box-shadow: 0 0 12px var(--amber); }
+  .tl-entry.success::before { border-color: var(--emerald); }
+  .tl-entry.success:hover::before { background: var(--emerald); box-shadow: 0 0 12px var(--emerald); }
+  .tl-entry.info::before { border-color: var(--violet); }
+  .tl-entry.info:hover::before { background: var(--violet); box-shadow: 0 0 12px var(--violet); }
+
+  /* Timestamp */
+  .tl-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: inline-block;
+  }
+
+  /* Card */
+  .tl-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+    transition: all 0.3s;
+  }
+  .tl-card:hover {
+    border-color: var(--border2);
+    box-shadow: 0 6px 30px var(--shadow);
+    transform: translateY(-1px);
+  }
+  .tl-card h3 {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text2);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tl-card h3 .ic {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .tl-card .desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .tl-card .desc strong { color: var(--text); }
+
+  /* Tags */
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .tag {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid;
+  }
+  .tag.tool { background: rgba(6,182,212,0.06); border-color: rgba(6,182,212,0.2); color: var(--cyan); }
+  .tag.technique { background: rgba(139,92,246,0.06); border-color: rgba(139,92,246,0.2); color: var(--violet); }
+  .tag.finding { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); color: var(--red); }
+  .tag.concept { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2); color: var(--amber); }
+  .tag.defense { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.2); color: var(--emerald); }
+
+  /* Screenshot */
+  .frame {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-top: 10px;
+    cursor: pointer;
+    filter: brightness(var(--img-brightness));
+    transition: all 0.3s;
+  }
+  .frame:hover {
+    filter: brightness(1);
+    border-color: var(--accent);
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+  .frame-caption {
+    font-size: 9px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Play Button */
+  .play-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: all 0.3s;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .play-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    transform: scale(1.15);
+    box-shadow: 0 0 14px var(--accent-glow);
+  }
+  .play-btn svg {
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+    margin-left: 1px;
+  }
+
+  /* Video Modal */
+  .video-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .video-modal.active { display: flex; }
+  .video-modal video {
+    max-width: 88vw;
+    max-height: 80vh;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+    background: #000;
+  }
+  .video-modal .vm-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .video-modal .vm-close:hover {
+    background: rgba(255,255,255,0.2);
+    transform: scale(1.1);
+  }
+  .video-modal .vm-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.5px;
+  }
+
+  /* Code Snippet */
+  .code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    margin-top: 8px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* Summary boxes */
+  .summary-box {
+    max-width: 820px;
+    margin: 0 auto 40px;
+    padding: 0 20px;
+  }
+  .summary-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    transition: all 0.4s;
+  }
+  .summary-inner h2 {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 16px;
+    text-align: center;
+    background: linear-gradient(90deg, var(--red), var(--violet));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .chain-step {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid;
+  }
+  .chain-arrow { color: var(--muted); }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .tool-item {
+    padding: 10px;
+    background: var(--bg2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .tool-item .tname { font-weight: 700; font-size: 12px; }
+  .tool-item .tdesc { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 30px 20px 50px;
+    color: var(--muted);
+    font-size: 11px;
+    border-top: 1px solid var(--border);
+    max-width: 820px;
+    margin: 0 auto;
+  }
+  .footer strong { color: var(--accent); }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    backdrop-filter: blur(6px);
+  }
+  .lightbox.active { display: flex; }
+  .lightbox img {
+    max-width: 92vw;
+    max-height: 92vh;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .timeline::before { left: 19px; }
+    .tl-entry { padding-left: 48px; }
+    .tl-entry::before { left: 12px; width: 14px; height: 14px; }
+    .phase { padding-left: 48px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Controls -->
+<div class="top-controls">
+  <button class="ctrl-btn lang-btn" id="langBtn" onclick="toggleLang()" aria-label="Toggle language">TR</button>
+  <button class="ctrl-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle light/dark mode">🌙</button>
+</div>
+
+<!-- ═══════ HERO ═══════ -->
+<header class="hero">
+  <div class="badge" data-i18n="badge">⚠ Kernel-Level Threat Analysis</div>
+  <h1 data-i18n="title">Reverse Engineering a<br>Fileless Game Cheat</h1>
+  <p data-i18n="subtitle">A forensic investigation into how a commercial cheat exploits vulnerable signed drivers, injects into DWM.exe, and hides entirely in Ring-0 kernel memory.</p>
+  <div class="meta">
+    <span>🕐 <strong>~11 min</strong></span>
+    <span>🔬 <strong data-i18n="meta_tools">6 Tools</strong></span>
+    <span>🎯 <strong data-i18n="meta_tech">8+ Techniques</strong></span>
+    <span>⚡ <strong style="color:var(--red)" data-i18n="meta_critical">Critical</strong></span>
+  </div>
+</header>
+
+<!-- ═══════ STATS ═══════ -->
+<div class="stats-bar">
+  <div class="stat-card"><div class="number" style="color:var(--red)">Ring-0</div><div class="label" data-i18n="stat_priv">Privilege Level</div></div>
+  <div class="stat-card"><div class="number" style="color:var(--amber)">0</div><div class="label" data-i18n="stat_files">Files on Disk</div></div>
+  <div class="stat-card"><div class="number" style="color:var(--cyan)">DWM.exe</div><div class="label" data-i18n="stat_hijack">Hijacked Process</div></div>
+  <div class="stat-card"><div class="number" style="color:var(--violet)">BSOD</div><div class="label" data-i18n="stat_kill">Kill Switch</div></div>
+  <div class="stat-card"><div class="number" style="color:var(--emerald)">1E</div><div class="label" data-i18n="stat_bug">Bug Check Code</div></div>
+</div>
+
+<!-- ═══════ TIMELINE ═══════ -->
+<div class="timeline">
+
+  <!-- ── PHASE 1 ── -->
+  <div class="phase recon"><span class="phase-badge" data-i18n="phase1">🔍 Phase 1 — Reconnaissance</span></div>
+
+  <div class="tl-entry">
+    <span class="tl-time">00:00 – 01:18 <button class="play-btn" onclick="playAt(0,'Vulnerable Driver Threat Model')" aria-label="Play video from 00:00"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(239,68,68,0.1)">🛡️</span> <span data-i18n="c1_title">The Vulnerable Driver Threat Model</span></h3>
+      <div class="desc" data-i18n="c1_desc">
+        The investigation opens with a critical premise: <strong>the biggest danger isn't a virus — it's a completely legal, signed file</strong>. When companies like Nvidia release signed drivers, they get kernel access. But developer mistakes leave <strong>backdoors that hackers exploit</strong> to bypass anti-cheat, manipulate memory, and compromise the OS.
+      </div>
+      <img src="frames/01_intro.jpg" alt="Vulnerable driver threat model explanation" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c1_cap">📸 00:04 — Vulnerable driver attack vector explained</div>
+      <div class="tags">
+        <span class="tag concept">Vulnerable Driver</span>
+        <span class="tag concept">Kernel Access</span>
+        <span class="tag concept">Code Signing</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry">
+    <span class="tl-time">01:18 – 02:10 <button class="play-btn" onclick="playAt(78,'Cheat Website & Anti-Forensics')" aria-label="Play video from 01:18"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(245,158,11,0.1)">🎮</span> <span data-i18n="c2_title">Cheat Website & Anti-Forensics</span></h3>
+      <div class="desc" data-i18n="c2_desc">
+        The cheat is sold online. Upon download, <strong>the .exe name is randomized every time</strong> — the first anti-forensics technique. The analyst sets up a <strong>Windows 10</strong> environment. Behavior is immediately alarming: <strong>Task Manager cannot close it</strong>, and attempting to reboot produces a <strong>Blue Screen of Death</strong>.
+      </div>
+      <img src="frames/03_cheat_website.jpg" alt="Cheat website and download" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c2_cap1">📸 01:44 — Cheat website with randomized download</div>
+      <img src="frames/05_cheat_panel.jpg" alt="Cheat control panel" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c2_cap2">📸 02:15 — Cheat control panel & game interface</div>
+      <div class="tags">
+        <span class="tag technique">Filename Randomization</span>
+        <span class="tag finding">BSOD on Shutdown</span>
+        <span class="tag technique">Process Protection</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 2 ── -->
+  <div class="phase hunt"><span class="phase-badge" data-i18n="phase2">🎯 Phase 2 — The Hunt</span></div>
+
+  <div class="tl-entry warning">
+    <span class="tl-time">02:12 – 03:36 <button class="play-btn" onclick="playAt(132,'Process Monitor — Drop & Load Trap')" aria-label="Play video from 02:12"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(6,182,212,0.1)">🔎</span> <span data-i18n="c3_title">Process Monitor — Drop & Load Trap</span></h3>
+      <div class="desc" data-i18n="c3_desc1">
+        Using <strong>ProcMon (SysInternals)</strong>, a strategic filter is set to catch the "drop and load" technique — where cheats write a .sys file, load it into the kernel, then delete it:
+      </div>
+      <div class="code">Process Name contains [cheat_name]
+Path ends with .sys
+Operation contains WriteFile</div>
+      <div class="desc" style="margin-top:8px" data-i18n="c3_desc2">
+        <strong>Result: Completely empty.</strong> No .sys file creation detected. The cheat isn't using a standard driver drop.
+      </div>
+      <img src="frames/06_procmon.jpg" alt="ProcMon filter configuration" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c3_cap">📸 02:55 — ProcMon filter dialog with cheat process name filter</div>
+      <div class="tags">
+        <span class="tag tool">ProcMon</span>
+        <span class="tag technique">Drop & Load</span>
+        <span class="tag finding">No Disk Activity</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry warning">
+    <span class="tl-time">03:39 – 04:30 <button class="play-btn" onclick="playAt(219,'Process Hacker — Service & Driver Scan')" aria-label="Play video from 03:39"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(139,92,246,0.1)">🔬</span> <span data-i18n="c4_title">Process Hacker — Service & Driver Scan</span></h3>
+      <div class="desc" data-i18n="c4_desc">
+        <strong>Process Hacker</strong> shows color-coded processes (purple, gray, orange) but <strong>no suspicious process is visible</strong>. The Services tab with "Key Modified Time" sorting reveals <strong>nothing</strong>.
+        <br><br>
+        Pivot: using <strong>"Find Window"</strong> to locate which process owns the cheat's visible UI panel.
+      </div>
+      <img src="frames/08_process_hacker.jpg" alt="Process Hacker process list" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c4_cap">📸 04:10 — Process Hacker process tree inspection</div>
+      <div class="tags">
+        <span class="tag tool">Process Hacker</span>
+        <span class="tag technique">Service Enumeration</span>
+        <span class="tag technique">Window → Process Mapping</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry danger">
+    <span class="tl-time">04:22 – 04:48 <button class="play-btn" onclick="playAt(262,'Discovery: DWM.exe Hijacking')" aria-label="Play video from 04:22"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(239,68,68,0.12)">💀</span> <span data-i18n="c5_title">Discovery: DWM.exe Hijacking</span></h3>
+      <div class="desc" data-i18n="c5_desc">
+        <strong>Critical finding:</strong> The cheat's window belongs to <strong>Desktop Window Manager (dwm.exe)</strong> — a core Windows system process. The cheat has <strong>injected itself into DWM.exe</strong> via process hijacking. Memory inspection is blocked — the cheat strips handle rights to prevent any process from reading DWM's memory.
+      </div>
+      <img src="frames/09_dwm_found.jpg" alt="DWM.exe as cheat host" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c5_cap">📸 05:00 — DWM.exe identified as the injected host process</div>
+      <div class="tags">
+        <span class="tag finding">DWM.exe Injection</span>
+        <span class="tag technique">Process Hijacking</span>
+        <span class="tag technique">Handle Stripping</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry">
+    <span class="tl-time">04:50 – 06:17 <button class="play-btn" onclick="playAt(290,'YDArk — Kernel Hook Inspector')" aria-label="Play video from 04:50"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(6,182,212,0.1)">🏴‍☠️</span> <span data-i18n="c6_title">YDArk — Kernel Hook Inspector</span></h3>
+      <div class="desc" data-i18n="c6_desc">
+        <strong>YDArk</strong> is deployed to detect kernel hooks and hidden files. Over <strong>500+ drivers</strong> are loaded in a normal Windows system. The Kernel → System Callbacks section is inspected — modern cheats set hooks here.
+        <br><br>
+        Red flags: missing module names, random memory addresses, unsigned drivers. <strong>Result: Nothing found.</strong>
+      </div>
+      <img src="frames/10_ydark.jpg" alt="YDArk kernel process list" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c6_cap">📸 05:20 — YDArk kernel module & process inspector</div>
+      <div class="tags">
+        <span class="tag tool">YDArk</span>
+        <span class="tag technique">Kernel Callback Inspection</span>
+        <span class="tag finding">No Kernel Hooks</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry">
+    <span class="tl-time">06:20 – 06:54 <button class="play-btn" onclick="playAt(380,'Network Sniffing — TCPView')" aria-label="Play video from 06:20"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(6,182,212,0.1)">🌐</span> <span data-i18n="c7_title">Network Sniffing — TCPView</span></h3>
+      <div class="desc" data-i18n="c7_desc">
+        Hypothesis: maybe the cheat downloads the driver from the internet. <strong>TCPView</strong> monitors all connections — Process Name, Remote Address, Remote Port. <strong>No suspicious network activity detected.</strong>
+      </div>
+      <img src="frames/12_tcpview.jpg" alt="TCPView network monitor" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c7_cap">📸 06:35 — TCPView showing live network connections</div>
+      <div class="tags">
+        <span class="tag tool">TCPView</span>
+        <span class="tag technique">Network Forensics</span>
+        <span class="tag finding">No C2 Traffic</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 3 ── -->
+  <div class="phase analyze"><span class="phase-badge" data-i18n="phase3">🧠 Phase 3 — Memory Forensics</span></div>
+
+  <div class="tl-entry">
+    <span class="tl-time">06:56 – 07:58 <button class="play-btn" onclick="playAt(416,'BSOD Memory Dump Strategy')" aria-label="Play video from 06:56"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(245,158,11,0.1)">💾</span> <span data-i18n="c8_title">BSOD Memory Dump Strategy</span></h3>
+      <div class="desc" data-i18n="c8_desc">
+        Since live analysis fails, the analyst pivots to <strong>post-mortem forensics</strong>. When Windows crashes with BSOD, it snapshots <strong>everything in RAM</strong> to <code>C:\Windows\MEMORY.DMP</code>.
+        <br><br>
+        ⚠️ <strong>Pitfall:</strong> The C: drive must have ≥5% free space for Windows to write the dump file.
+      </div>
+      <img src="frames/13_memory_dump.jpg" alt="Memory dump collection" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c8_cap">📸 07:54 — Collecting crash dump after forced BSOD</div>
+      <div class="tags">
+        <span class="tag technique">Memory Dump</span>
+        <span class="tag tool">Event Viewer</span>
+        <span class="tag concept">Crash Forensics</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry info">
+    <span class="tl-time">07:54 – 08:52 <button class="play-btn" onclick="playAt(474,'WinDbg — Crash Dump Analysis')" aria-label="Play video from 07:54"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(139,92,246,0.12)">🐛</span> <span data-i18n="c9_title">WinDbg — Crash Dump Analysis</span></h3>
+      <div class="desc" data-i18n="c9_desc1">
+        <strong>WinDbg</strong> analyzes the crash dump. The <code>!analyze -v</code> command reveals:
+      </div>
+      <div class="code">BUGCHECK_CODE:  1e  (KMODE_EXCEPTION_NOT_HANDLED)
+BUGCHECK_P1:  ffffffffc0000005  (Access Violation)
+BUGCHECK_P2:  ffffcc0e95e11225  → NO MODULE NAME
+BUGCHECK_P3:  1
+BUGCHECK_P4:  2253ad40008</div>
+      <div class="desc" style="margin-top:8px" data-i18n="c9_desc2">
+        <strong>The smoking gun:</strong> Normally WinDbg shows a module name next to the crash address. Here there is <strong>nothing</strong> — no name, no file. Code is executing from <strong>unmapped, anonymous kernel memory</strong>.
+      </div>
+      <img src="frames/14_windbg.jpg" alt="WinDbg BugCheck analysis" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c9_cap">📸 08:28 — WinDbg crash analysis: BugCheck 0x1E with highlighted P1 & P2</div>
+      <div class="tags">
+        <span class="tag tool">WinDbg</span>
+        <span class="tag finding">BugCheck 0x1E</span>
+        <span class="tag finding">Anonymous Kernel Code</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 4 ── -->
+  <div class="phase discover"><span class="phase-badge" data-i18n="phase4">💥 Phase 4 — The Discovery</span></div>
+
+  <div class="tl-entry danger">
+    <span class="tl-time">09:01 – 09:39 <button class="play-btn" onclick="playAt(541,'Spin Lock & Ghost Thread Crash')" aria-label="Play video from 09:01"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(239,68,68,0.12)">⚡</span> <span data-i18n="c10_title">Spin Lock & Ghost Thread Crash</span></h3>
+      <div class="desc" data-i18n="c10_desc">
+        The cheat uses a <strong>spin lock</strong> — a kernel-level threading primitive. It <strong>simultaneously reads game memory and writes to the UI</strong>.
+        <br><br>
+        On close, code memory is wiped — but <strong>a hidden kernel thread persists</strong>. It attempts to lock <strong>deleted memory</strong>, causing the fatal BSOD.
+      </div>
+      <img src="frames/16_spinlock.jpg" alt="Spin lock analysis" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c10_cap">📸 09:20 — Spin lock mechanism & orphaned thread crash analysis</div>
+      <div class="tags">
+        <span class="tag technique">Spin Lock</span>
+        <span class="tag technique">Orphaned Thread</span>
+        <span class="tag finding">Use-After-Free Crash</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-entry danger">
+    <span class="tl-time">09:39 – 10:14 <button class="play-btn" onclick="playAt(579,'Fileless Ring-0 Injection')" aria-label="Play video from 09:39"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(239,68,68,0.15)">🧬</span> <span data-i18n="c11_title">Fileless Ring-0 Injection — Full Picture</span></h3>
+      <div class="desc" data-i18n="c11_desc">
+        The complete attack chain:
+        <ol style="margin:8px 0 0 18px;font-size:12px;color:var(--text)">
+          <li>Exploited a vulnerable signed driver for initial kernel access</li>
+          <li><strong>Carved code into Non-Paged Pool memory</strong> (kernel RAM that never writes to disk)</li>
+          <li>Created a <strong>fake system thread</strong> via the kernel's process manager</li>
+          <li>Injected UI into <strong>DWM.exe</strong> for visual control</li>
+          <li>Stripped handle rights to prevent memory inspection</li>
+        </ol>
+        <br>
+        This is why ProcMon, Process Hacker, YDArk, and TCPView <strong>all found nothing</strong>. The cheat is <strong>entirely fileless in Ring-0 memory</strong>.
+      </div>
+      <img src="frames/17_ring0.jpg" alt="Ring-0 injection explanation" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c11_cap">📸 09:47 — Ring-0 fileless injection mechanism</div>
+      <div class="tags">
+        <span class="tag finding">Fileless Malware</span>
+        <span class="tag technique">Ring-0 Injection</span>
+        <span class="tag technique">Non-Paged Pool</span>
+        <span class="tag technique">Fake System Thread</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PHASE 5 ── -->
+  <div class="phase conclusion"><span class="phase-badge" data-i18n="phase5">🏁 Phase 5 — Conclusions</span></div>
+
+  <div class="tl-entry success">
+    <span class="tl-time">10:14 – 11:19 <button class="play-btn" onclick="playAt(614,'Why Kernel Anti-Cheat Exists')" aria-label="Play video from 10:14"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></button></span>
+    <div class="tl-card">
+      <h3><span class="ic" style="background:rgba(16,185,129,0.1)">📋</span> <span data-i18n="c12_title">Why Kernel Anti-Cheat Exists</span></h3>
+      <div class="desc" data-i18n="c12_desc">
+        <strong>Traditional anti-cheat is useless.</strong> Scanning disk for .sys files fails against fileless attacks. Cheaters now <strong>"become the OS itself"</strong> by injecting into kernel threads.
+        <br><br>
+        This is why <strong>Valorant uses Vanguard</strong> — a kernel-level anti-cheat at Ring-0 to match these advanced cheats.
+      </div>
+      <img src="frames/18_conclusion.jpg" alt="Conclusion" class="frame" onclick="openLB(this)">
+      <div class="frame-caption" data-i18n="c12_cap">📸 10:55 — Why kernel-level anti-cheat is a necessary arms race</div>
+      <div class="tags">
+        <span class="tag defense">Kernel Anti-Cheat</span>
+        <span class="tag concept">Vanguard</span>
+        <span class="tag concept">Security Arms Race</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════ KILL CHAIN ═══════ -->
+<div class="summary-box">
+  <div class="summary-inner">
+    <h2 data-i18n="kill_chain_title">Complete Attack Kill Chain</h2>
+    <div class="chain">
+      <span class="chain-step" style="background:rgba(6,182,212,0.08);border-color:rgba(6,182,212,0.25);color:var(--cyan)" data-i18n="kc1">1. Exploit Signed Driver</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-step" style="background:rgba(139,92,246,0.08);border-color:rgba(139,92,246,0.25);color:var(--violet)" data-i18n="kc2">2. Gain Kernel Access</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-step" style="background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.25);color:var(--amber)" data-i18n="kc3">3. Carve into Non-Paged Pool</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-step" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.25);color:var(--red)" data-i18n="kc4">4. Fake System Thread</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-step" style="background:rgba(244,63,94,0.08);border-color:rgba(244,63,94,0.25);color:var(--rose)" data-i18n="kc5">5. Inject into DWM.exe</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-step" style="background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.25);color:var(--emerald)" data-i18n="kc6">6. Strip Handle Rights</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ TOOLS ═══════ -->
+<div class="summary-box">
+  <div class="summary-inner">
+    <h2 style="-webkit-text-fill-color:var(--text2);background:none;color:var(--text2)" data-i18n="tools_title">🧰 Tools Used in This Investigation</h2>
+    <div class="tools-grid">
+      <div class="tool-item"><div class="tname" style="color:var(--cyan)">ProcMon</div><div class="tdesc" data-i18n="tool1">SysInternals — File/Registry/Process monitor</div></div>
+      <div class="tool-item"><div class="tname" style="color:var(--violet)">Process Hacker</div><div class="tdesc" data-i18n="tool2">Advanced task manager with driver inspection</div></div>
+      <div class="tool-item"><div class="tname" style="color:var(--amber)">YDArk</div><div class="tdesc" data-i18n="tool3">Kernel rootkit detector & hook inspector</div></div>
+      <div class="tool-item"><div class="tname" style="color:var(--emerald)">TCPView</div><div class="tdesc" data-i18n="tool4">SysInternals — Network connection monitor</div></div>
+      <div class="tool-item"><div class="tname" style="color:var(--red)">WinDbg</div><div class="tdesc" data-i18n="tool5">Microsoft kernel debugger for crash dumps</div></div>
+      <div class="tool-item"><div class="tname" style="color:var(--rose)">Event Viewer</div><div class="tdesc" data-i18n="tool6">Windows system log inspector</div></div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <p data-i18n="footer1">Generated from video subtitle analysis — <strong>Reverse Engineering: Game Cheat Analyze</strong></p>
+  <p style="margin-top:6px" data-i18n="footer2">Student ID: 2320191007 · İstinye University · Reverse Engineering Course</p>
+</footer>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lb" onclick="this.classList.remove('active')">
+  <img id="lb-img" src="" alt="Enlarged screenshot">
+</div>
+
+<!-- Video Modal -->
+<div class="video-modal" id="vm">
+  <button class="vm-close" onclick="closeVideo()" aria-label="Close video">✕</button>
+  <div class="vm-label" id="vm-label"></div>
+  <video id="vm-video" controls preload="metadata">
+    <source src="../demo/videoplayback.mp4" type="video/mp4">
+    <track kind="captions" />
+  </video>
+</div>
+
+<script>
+// Image lightbox
+function openLB(el) {
+  document.getElementById('lb-img').src = el.src;
+  document.getElementById('lb').classList.add('active');
+}
+
+// Video modal
+function playAt(seconds, label) {
+  const modal = document.getElementById('vm');
+  const video = document.getElementById('vm-video');
+  const labelEl = document.getElementById('vm-label');
+  labelEl.textContent = '▶ ' + label;
+  modal.classList.add('active');
+  video.currentTime = seconds;
+  video.play();
+}
+function closeVideo() {
+  const modal = document.getElementById('vm');
+  const video = document.getElementById('vm-video');
+  video.pause();
+  modal.classList.remove('active');
+}
+// Close on backdrop click
+document.getElementById('vm').addEventListener('click', function(e) {
+  if (e.target === this) closeVideo();
+});
+
+// Escape key closes both modals
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('lb').classList.remove('active');
+    closeVideo();
+  }
+});
+
+// Theme toggle
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.getElementById('themeBtn');
+  if (html.getAttribute('data-theme') === 'dark') {
+    html.setAttribute('data-theme', 'light');
+    btn.textContent = '☀️';
+    localStorage.setItem('theme', 'light');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+    btn.textContent = '🌙';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+    document.getElementById('themeBtn').textContent = '☀️';
+  }
+})();
+// ═══════ i18n ═══════
+const T = {
+  tr: {
+    badge: '⚠ Çekirdek Düzeyinde Tehdit Analizi',
+    title: 'Oyun Hilesi<br>Tersine Mühendislik',
+    subtitle: 'Ticari bir hilenin imzalı sürücüleri nasıl istismar ettiğini, DWM.exe\'ye nasıl enjekte olduğunu ve tamamen Ring-0 çekirdek belleğinde nasıl gizlendiğini gösteren adli analiz.',
+    meta_tools: '6 Araç', meta_tech: '8+ Teknik', meta_critical: 'Kritik',
+    stat_priv: 'Ayrıcalık Seviyesi', stat_files: 'Diskteki Dosya', stat_hijack: 'Ele Geçirilen İşlem', stat_kill: 'Öldürme Anahtarı', stat_bug: 'Hata Kontrol Kodu',
+    phase1: '🔍 Aşama 1 — Keşif', phase2: '🎯 Aşama 2 — Avlanma', phase3: '🧠 Aşama 3 — Bellek Adli Analizi', phase4: '💥 Aşama 4 — Keşif', phase5: '🏁 Aşama 5 — Sonuçlar',
+    c1_title: 'Güvenlik Açığı Olan Sürücü Tehdit Modeli',
+    c1_desc: 'Araştırma kritik bir önermeyle açılıyor: <strong>en büyük tehlike virüs değil — tamamen yasal, imzalı bir dosyadır</strong>. Nvidia gibi şirketler imzalı sürücüler yayınladığında çekirdek erişimi alırlar. Ancak geliştirici hataları, hilecilerin <strong>anti-cheat\'i atlamak, belleği manipüle etmek ve işletim sistemini tehlikeye atmak için kullandığı arka kapılar</strong> bırakır.',
+    c1_cap: '📸 00:04 — Güvenlik açığı olan sürücü saldırı vektörü',
+    c2_title: 'Hile Sitesi & Anti-Adli Bilişim',
+    c2_desc: 'Hile çevrimiçi satılmaktadır. İndirildiğinde, <strong>.exe adı her seferinde rastgele değiştirilir</strong> — ilk anti-adli teknik. Analist bir <strong>Windows 10</strong> ortamı kurar. Davranış hemen endişe vericidir: <strong>Görev Yöneticisi kapatamaz</strong> ve yeniden başlatma girişimi <strong>Mavi Ekran (BSOD)</strong> üretir.',
+    c2_cap1: '📸 01:44 — Rastgele indirme bağlantılı hile sitesi',
+    c2_cap2: '📸 02:15 — Hile kontrol paneli & oyun arayüzü',
+    c3_title: 'Process Monitor — Drop & Load Tuzağı',
+    c3_desc1: '<strong>ProcMon (SysInternals)</strong> kullanılarak, hilelerin .sys dosyası yazıp çekirdeğe yükleyip sildiği "drop and load" tekniğini yakalamak için stratejik bir filtre ayarlanır:',
+    c3_desc2: '<strong>Sonuç: Tamamen boş.</strong> Hiçbir .sys dosya oluşturma tespit edilmedi. Hile standart sürücü bırakma yöntemi kullanmıyor.',
+    c3_cap: '📸 02:55 — ProcMon filtre penceresi',
+    c4_title: 'Process Hacker — Servis & Sürücü Taraması',
+    c4_desc: '<strong>Process Hacker</strong> renk kodlu işlemleri gösterir (mor, gri, turuncu) ancak <strong>şüpheli işlem görünmüyor</strong>. "Key Modified Time" ile sıralanan Servisler sekmesi <strong>hiçbir şey göstermez</strong>.<br><br>Dönüş: hile\'nin görünür UI panelinin sahibi olan işlemi bulmak için <strong>"Find Window"</strong> kullanılır.',
+    c4_cap: '📸 04:10 — Process Hacker işlem ağacı incelemesi',
+    c5_title: 'Keşif: DWM.exe Ele Geçirilmesi',
+    c5_desc: '<strong>Kritik bulgu:</strong> Hile penceresi <strong>Desktop Window Manager (dwm.exe)</strong> — temel Windows sistem işlemine aittir. Hile, işlem ele geçirme yoluyla <strong>kendisini DWM.exe\'ye enjekte etmiştir</strong>. Bellek incelemesi engellenmiştir — hile, herhangi bir işlemin DWM belleğini okumasını önlemek için handle haklarını kaldırır.',
+    c5_cap: '📸 05:00 — DWM.exe enjekte edilmiş ana işlem olarak tespit edildi',
+    c6_title: 'YDArk — Çekirdek Kanca Denetleyicisi',
+    c6_desc: '<strong>YDArk</strong>, çekirdek kancalarını ve gizli dosyaları tespit etmek için kullanılır. Normal Windows sisteminde <strong>500+ sürücü</strong> yüklüdür. Kernel → System Callbacks bölümü incelenir — modern hileler burada kanca kurar.<br><br>Kırmızı bayraklar: eksik modül adları, rastgele bellek adresleri, imzasız sürücüler. <strong>Sonuç: Hiçbir şey bulunamadı.</strong>',
+    c6_cap: '📸 05:20 — YDArk çekirdek modül & işlem denetleyicisi',
+    c7_title: 'Ağ Dinleme — TCPView',
+    c7_desc: 'Hipotez: belki hile sürücüyü internetten indiriyor. <strong>TCPView</strong> tüm bağlantıları izler — İşlem Adı, Uzak Adres, Uzak Port. <strong>Şüpheli ağ etkinliği tespit edilmedi.</strong>',
+    c7_cap: '📸 06:35 — TCPView canlı ağ bağlantıları',
+    c8_title: 'BSOD Bellek Dökümü Stratejisi',
+    c8_desc: 'Canlı analiz başarısız olduğundan, analist <strong>post-mortem adli bilişime</strong> yönelir. Windows BSOD ile çöktüğünde, <strong>RAM\'deki her şeyin anlık görüntüsünü</strong> <code>C:\\Windows\\MEMORY.DMP</code> dosyasına kaydeder.<br><br>⚠️ <strong>Tuzak:</strong> Windows\'un döküm dosyasını yazabilmesi için C: sürücüsünde ≥%5 boş alan olmalıdır.',
+    c8_cap: '📸 07:54 — Zorunlu BSOD sonrası çökme dökümü toplama',
+    c9_title: 'WinDbg — Çökme Dökümü Analizi',
+    c9_desc1: '<strong>WinDbg</strong> çökme dökümünü analiz eder. <code>!analyze -v</code> komutu şunu ortaya koyar:',
+    c9_desc2: '<strong>Kesin kanıt:</strong> Normalde WinDbg, çökme adresinin yanında bir modül adı gösterir. Burada <strong>hiçbir şey yok</strong> — ne ad ne dosya. Kod, <strong>eşlenmemiş, anonim çekirdek belleğinden</strong> çalışıyor.',
+    c9_cap: '📸 08:28 — WinDbg çökme analizi: BugCheck 0x1E',
+    c10_title: 'Spin Lock & Hayalet Thread Çökmesi',
+    c10_desc: 'Hile bir <strong>spin lock</strong> kullanır — çekirdek düzeyinde iş parçacığı ilkesi. <strong>Aynı anda oyun belleğini okur ve arayüze yazar</strong>.<br><br>Kapatıldığında kod belleği silinir — ancak <strong>gizli çekirdek iş parçacığı devam eder</strong>. <strong>Silinmiş belleği kilitlemeye</strong> çalışır ve ölümcül BSOD\'ye neden olur.',
+    c10_cap: '📸 09:20 — Spin lock mekanizması & yetim thread çökme analizi',
+    c11_title: 'Dosyasız Ring-0 Enjeksiyonu — Tam Resim',
+    c11_desc: 'Tam saldırı zinciri:<ol style="margin:8px 0 0 18px;font-size:12px;color:var(--text)"><li>İlk çekirdek erişimi için güvenlik açığı olan imzalı sürücü istismar edildi</li><li><strong>Non-Paged Pool belleğine kod kazıldı</strong> (asla diske yazmayan çekirdek RAM\'i)</li><li>Çekirdek işlem yöneticisi aracılığıyla <strong>sahte sistem iş parçacığı</strong> oluşturuldu</li><li>Görsel kontrol için arayüz <strong>DWM.exe\'ye</strong> enjekte edildi</li><li>Bellek incelemesini önlemek için handle hakları kaldırıldı</li></ol><br>Bu yüzden ProcMon, Process Hacker, YDArk ve TCPView <strong>hiçbir şey bulamadı</strong>. Hile tamamen <strong>Ring-0 belleğinde dosyasız</strong>.',
+    c11_cap: '📸 09:47 — Ring-0 dosyasız enjeksiyon mekanizması',
+    c12_title: 'Neden Çekirdek Düzeyinde Anti-Cheat Var?',
+    c12_desc: '<strong>Geleneksel anti-cheat işe yaramaz.</strong> Dosyasız saldırılara karşı diskte .sys dosya araması başarısız olur. Hileciler artık çekirdek iş parçacıklarına enjekte olarak <strong>"işletim sisteminin kendisi olurlar"</strong>.<br><br>Bu yüzden <strong>Valorant, Vanguard kullanır</strong> — bu gelişmiş hilelerle eşleşmek için Ring-0\'da çalışan çekirdek düzeyinde anti-cheat.',
+    c12_cap: '📸 10:55 — Çekirdek düzeyinde anti-cheat neden gerekli',
+    kill_chain_title: 'Tam Saldırı Öldürme Zinciri',
+    kc1: '1. İmzalı Sürücü İstismarı', kc2: '2. Çekirdek Erişimi', kc3: '3. Non-Paged Pool\'a Kod Kazıma', kc4: '4. Sahte Sistem Thread\'i', kc5: '5. DWM.exe\'ye Enjeksiyon', kc6: '6. Handle Haklarını Kaldırma',
+    tools_title: '🧰 Bu Araştırmada Kullanılan Araçlar',
+    tool1: 'SysInternals — Dosya/Kayıt/İşlem izleyici', tool2: 'Sürücü denetimiyle gelişmiş görev yöneticisi', tool3: 'Çekirdek rootkit dedektörü & kanca denetleyicisi', tool4: 'SysInternals — Ağ bağlantısı izleyici', tool5: 'Microsoft çekirdek hata ayıklayıcı', tool6: 'Windows sistem günlüğü denetleyicisi',
+    footer1: 'Video altyazı analizinden oluşturuldu — <strong>Tersine Mühendislik: Oyun Hilesi Analizi</strong>',
+    footer2: 'Öğrenci No: 2320191007 · İstinye Üniversitesi · Tersine Mühendislik Dersi'
+  }
+};
+
+// Store EN originals on first load
+const enOriginals = {};
+document.querySelectorAll('[data-i18n]').forEach(el => {
+  enOriginals[el.getAttribute('data-i18n')] = el.innerHTML;
+});
+
+let currentLang = localStorage.getItem('lang') || 'en';
+
+function applyLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (lang === 'tr' && T.tr[key]) {
+      el.innerHTML = T.tr[key];
+    } else {
+      el.innerHTML = enOriginals[key];
+    }
+  });
+  document.getElementById('langBtn').textContent = lang === 'en' ? 'TR' : 'EN';
+  document.documentElement.lang = lang;
+  localStorage.setItem('lang', lang);
+}
+
+function toggleLang() {
+  applyLang(currentLang === 'en' ? 'tr' : 'en');
+}
+
+// Restore saved lang
+(function() {
+  const saved = localStorage.getItem('lang');
+  if (saved && saved !== 'en') applyLang(saved);
+})();
+</script>
+
+</body>
+</html>

@@ -7,40 +7,89 @@
 **Danışman:** Keyvan Arasteh Abbasabad
 
 ## İçindekiler
-- [🎬 Demo](#-demo)
+- [🎬 Demo](#-demo-live-execution--analysis)
+- [📊 Interactive Timeline](#-interactive-investigation-timeline)
+- [🏗️ Architecture](#️-technical-architecture)
 - [🛠️ Kullanılan Profesyonel Araçlar](#️-kullanılan-profesyonel-araçlar-toolchain)
+- [📂 Repo Yapısı](#-repo-yapısı-ve-mühendislik-disiplini)
 - [🔍 Adım Adım Analiz Süreci](#-adım-adım-analiz-süreci-ve-bulgular-video-özeti)
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Analysis Mode](https://img.shields.io/badge/Analysis-Kernel%20Ring%200-red)
 ![Linting](https://img.shields.io/badge/Linting-Flake8-blue)
+![Language](https://img.shields.io/badge/Language-EN%20%7C%20TR-blue)
 
 Bu depo, modern bir oyunun Kernel (Ring-0) seviyesinde nasıl çalıştığını, bellek yönetimini ve ağ (TCP) trafiğini analiz eden **uygulamalı tersine mühendislik** projesini içermektedir.
+
+> **🌐 Bilingual Documentation:** The interactive timeline and architecture documents are available in both English and Turkish. / İnteraktif zaman çizelgesi ve mimari belgeler hem İngilizce hem Türkçe olarak mevcuttur.
+
+> **⚠️ Önemli Not:** Bu proje genel amaçlı bir araç değildir. Belirli bir senaryo (dosyasız Ring-0 oyun hilesi) üzerinde gerçekleştirilen uygulamalı adli analiz çalışmasıdır. `scripts/` klasöründeki kodlar bu analiz senaryosu için yazılmıştır. Projeyi genel amaçlı bir forensik araç setine dönüştürmek isterseniz, yol haritasını [`TODO.md`](TODO.md) dosyasından takip edebilirsiniz. **Katkılarınızdan çok memnuniyet duyarız!** 🤝
 
 ## 🎬 Demo (Live Execution & Analysis)
 
 Projenin tüm adımlarını, canlı bellek (memory) manipülasyonunu ve araçların kullanımını içeren **10 dakikalık kapsamlı teknik analiz videosu** repoya yüklenmiştir.
-Ayrıca youtube linki: "https://youtu.be/sIuC5Arvtq4"
 
-*`demo/` klasöründeki dosyaya tıklayabilirsiniz.)*
+▶ **YouTube:** [https://youtu.be/sIuC5Arvtq4](https://youtu.be/sIuC5Arvtq4)
 
+📁 *`demo/` klasöründeki video dosyasına da tıklayabilirsiniz.*
+
+## 📊 Interactive Investigation Timeline
+
+Adli analiz sürecinin **5 aşamasını** görselleştiren interaktif HTML zaman çizelgesi:
+
+- 🎬 **Video Oynatma:** Her bölüm için ▶ butonuyla ilgili zaman damgasından video izleme
+- 📸 **14 Ekran Görüntüsü:** ProcMon, Process Hacker, YDArk, WinDbg gibi araçlardan alınmış forensik kanıt çerçeveleri
+- 🌙/☀️ **Karanlık/Aydınlık Mod:** LocalStorage ile kalıcı tema geçişi
+- 🌐 **EN/TR Dil Desteği:** Tek tıkla İngilizce-Türkçe geçiş
+
+📄 **[Timeline'ı Görüntüle → `docs/timeline.html`](docs/timeline.html)**
+
+## 🏗️ Technical Architecture
+
+Dosyasız Ring-0 enjeksiyon saldırısının **6 aşamalı teknik mimarisi:**
+
+1. **User-Mode Loader** — Polimorfik adla indirilen başlatıcı
+2. **Vulnerable Driver Exploitation** — İmzalı 3. parti sürücünün istismarı
+3. **Non-Paged Pool Injection** — Çekirdek belleğine kod enjeksiyonu
+4. **Fake System Thread** — `nt!PsCreateSystemThread` ile sahte sistem iş parçacığı
+5. **DWM.exe Hijacking** — Masaüstü pencere yöneticisine UI enjeksiyonu
+6. **Handle Stripping** — Bellek incelemesinin engellenmesi
+
+📄 **[Architecture Belgesini Oku → `docs/architecture.md`](docs/architecture.md)**
 
 ## 🛠️ Kullanılan Profesyonel Araçlar (Toolchain)
 
 Bu projede kod hacminden ziyade **teknik derinliğe** ve **canlı çalıştırmaya** odaklanılmıştır. Analiz aşağıdaki endüstri standardı araçlarla yapılmıştır:
 
-1. **WinDbg:** İşletim sistemi çekirdeği (Kernel) seviyesinde bellek dökümü (memory dump) ve debugging işlemleri.
-2. **Process Hacker:** Süreç (process) ağaçlarının, bellek sayfalarının (memory pages) ve handle'ların dinamik analizi.
-3. **YDArk:** Anti-rootkit ve kernel seviyesi kanca (hook) tespit mekanizmalarının bypass analizi.
-4. **Procmon (Process Monitor):** Dosya sistemi (File System) ve Kayıt Defteri (Registry) aktivitelerinin anlık izlenmesi.
-5. **TCPview:** Oyunun sunucularla kurduğu soket bağlantılarının ve ağ trafiği tünellerinin tespiti.
+| Araç | Kullanım Amacı | Sonuç |
+|------|---------------|-------|
+| **ProcMon** | Dosya sistemi ve Registry izleme — "Drop & Load" tuzağı | ❌ Disk aktivitesi bulunamadı |
+| **Process Hacker** | Süreç ağaçları ve servis taraması | ❌ Şüpheli process yok |
+| **YDArk** | Kernel hook ve rootkit tespiti | ❌ Kanca bulunamadı |
+| **TCPView** | Ağ trafiği ve C2 bağlantı taraması | ❌ Şüpheli trafik yok |
+| **WinDbg** | Post-mortem crash dump analizi | ✅ **Anonim kernel kodu tespit edildi** |
+| **Event Viewer** | Sistem günlüğü inceleme | ✅ BSOD düzgün yakalandı |
 
 ## 📂 Repo Yapısı ve Mühendislik Disiplini
 
-* `scripts/`: Procmon CSV loglarını ve bellek adreslerini analiz eden otomasyon araçları (TODO ve Linting standartlarına uygun).
-* `yara/`: Oyunun anti-debug mekanizmalarını tespit eden YARA kuralları.
-* `.github/workflows/`: Kod kalitesini (Linting) sürekli denetleyen CI/CD pipeline.
-* `Dockerfile`: Analiz araçlarının izolasyonunu sağlayan rootless (yetkisiz) konteyner mimarisi.
+```
+├── demo/                     # 10 dakikalık analiz videosu
+├── docs/
+│   ├── timeline.html         # İnteraktif forensik zaman çizelgesi (EN/TR)
+│   ├── architecture.md       # Teknik mimari analiz belgesi
+│   ├── sub.vtt              # Video altyazı transkripti
+│   └── frames/              # 14 video çerçevesi ekran görüntüsü
+├── scripts/
+│   ├── memory_scanner.py     # Windows API bellek okuyucu (ReadProcessMemory)
+│   ├── procmon_analyzer.py   # ProcMon CSV log ayrıştırıcı
+│   └── injection_poc.cpp     # VirtualAllocEx + CreateRemoteThread PoC
+├── yara/
+│   └── anti_debug_detect.yar # Anti-debug API ve araç sürücüsü tespit kuralı
+├── .github/workflows/        # CI/CD linting pipeline
+├── Dockerfile                # Rootless konteyner izolasyonu
+├── TODO.md                   # Yol haritası & katkıda bulunma rehberi
+└── README.md
+```
 
 * ## 🔍 Adım Adım Analiz Süreci ve Bulgular (Video Özeti)
 
@@ -63,3 +112,22 @@ Bu projede kod hacminden ziyade **teknik derinliğe** ve **canlı çalıştırma
 
 * **Sonuç ve Kernel-Ring 0 Tehdit Modeli:**
   [cite_start]`BUGCHECK_P2` parametresi ile çökmenin yaşandığı bellek adresi bulunmuş ancak bu adrese bağlı hiçbir sürücü modülüne rastlanmamıştır[cite: 93, 95, 96]. [cite_start]Hilenin veri okuma/yazma esnasında multi-threading "Lock" (Kilitleme) mekanizması kullandığı; zorla kapatıldığında boşluğa düşen bu kilitli bellek adreslerinin sistemin çökmesine neden olduğu anlaşılmıştır[cite: 100, 102, 103]. [cite_start]Zararlının diske dosya bırakmak yerine doğrudan Windows süreç yöneticisi (`nt!ps`) üzerinden kendi sahte "Sistem İş parçacıklarını (System Thread)" yaratarak bir "hayalet" gibi çalıştığı kanıtlanmıştır[cite: 106, 108]. [cite_start]Bu durum, geleneksel antivirüslerin (sadece diski tarayan) etkisiz kaldığını ve Ring-0 seviyesinde koruma gerektiğini (Vanguard vb.) doğrulamaktadır[cite: 109, 115, 118].
+
+---
+
+## 🤝 Katkıda Bulunma (Contributing)
+
+Bu projeyi geliştirmek veya genel amaçlı bir araç setine dönüştürmek istiyorsanız:
+
+1. 📋 **[TODO.md](TODO.md)** dosyasındaki yol haritasını inceleyin
+2. Repoyu fork edin
+3. Yeni branch: `git checkout -b feature/your-feature`
+4. Commit: `git commit -m 'feat: Add some feature'`
+5. Push: `git push origin feature/your-feature`
+6. Pull Request açın
+
+> Mevcut bilingual (TR/EN) yorum geleneğini koruyun. Yeni YARA kuralları, analiz scriptleri ve dokümantasyon katkıları özellikle değerlidir.
+
+---
+
+*İstinye Üniversitesi — Tersine Mühendislik Dersi — Danışman: Keyvan Arasteh*
