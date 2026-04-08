@@ -23,6 +23,8 @@ Bu depo, modern bir oyunun Kernel (Ring-0) seviyesinde nasıl çalıştığını
 
 > **🌐 Bilingual Documentation:** The interactive timeline and architecture documents are available in both English and Turkish. / İnteraktif zaman çizelgesi ve mimari belgeler hem İngilizce hem Türkçe olarak mevcuttur.
 
+> **⚠️ Önemli Not:** Bu proje genel amaçlı bir araç değildir. Belirli bir senaryo (dosyasız Ring-0 oyun hilesi) üzerinde gerçekleştirilen uygulamalı adli analiz çalışmasıdır. `scripts/` klasöründeki kodlar bu analiz senaryosu için yazılmıştır. Projeyi genel amaçlı bir forensik araç setine dönüştürmek isterseniz, yol haritasını [`TODO.md`](TODO.md) dosyasından takip edebilirsiniz. **Katkılarınızdan çok memnuniyet duyarız!** 🤝
+
 ## 🎬 Demo (Live Execution & Analysis)
 
 Projenin tüm adımlarını, canlı bellek (memory) manipülasyonunu ve araçların kullanımını içeren **10 dakikalık kapsamlı teknik analiz videosu** repoya yüklenmiştir.
@@ -85,6 +87,7 @@ Bu projede kod hacminden ziyade **teknik derinliğe** ve **canlı çalıştırma
 │   └── anti_debug_detect.yar # Anti-debug API ve araç sürücüsü tespit kuralı
 ├── .github/workflows/        # CI/CD linting pipeline
 ├── Dockerfile                # Rootless konteyner izolasyonu
+├── TODO.md                   # Yol haritası & katkıda bulunma rehberi
 └── README.md
 ```
 
@@ -109,3 +112,22 @@ Bu projede kod hacminden ziyade **teknik derinliğe** ve **canlı çalıştırma
 
 * **Sonuç ve Kernel-Ring 0 Tehdit Modeli:**
   [cite_start]`BUGCHECK_P2` parametresi ile çökmenin yaşandığı bellek adresi bulunmuş ancak bu adrese bağlı hiçbir sürücü modülüne rastlanmamıştır[cite: 93, 95, 96]. [cite_start]Hilenin veri okuma/yazma esnasında multi-threading "Lock" (Kilitleme) mekanizması kullandığı; zorla kapatıldığında boşluğa düşen bu kilitli bellek adreslerinin sistemin çökmesine neden olduğu anlaşılmıştır[cite: 100, 102, 103]. [cite_start]Zararlının diske dosya bırakmak yerine doğrudan Windows süreç yöneticisi (`nt!ps`) üzerinden kendi sahte "Sistem İş parçacıklarını (System Thread)" yaratarak bir "hayalet" gibi çalıştığı kanıtlanmıştır[cite: 106, 108]. [cite_start]Bu durum, geleneksel antivirüslerin (sadece diski tarayan) etkisiz kaldığını ve Ring-0 seviyesinde koruma gerektiğini (Vanguard vb.) doğrulamaktadır[cite: 109, 115, 118].
+
+---
+
+## 🤝 Katkıda Bulunma (Contributing)
+
+Bu projeyi geliştirmek veya genel amaçlı bir araç setine dönüştürmek istiyorsanız:
+
+1. 📋 **[TODO.md](TODO.md)** dosyasındaki yol haritasını inceleyin
+2. Repoyu fork edin
+3. Yeni branch: `git checkout -b feature/your-feature`
+4. Commit: `git commit -m 'feat: Add some feature'`
+5. Push: `git push origin feature/your-feature`
+6. Pull Request açın
+
+> Mevcut bilingual (TR/EN) yorum geleneğini koruyun. Yeni YARA kuralları, analiz scriptleri ve dokümantasyon katkıları özellikle değerlidir.
+
+---
+
+*İstinye Üniversitesi — Tersine Mühendislik Dersi — Danışman: Keyvan Arasteh*
